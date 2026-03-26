@@ -8,9 +8,6 @@
 #include <cstdint>
 #include <type_traits>
 
-// ═══════════════════════════════════════════════════════════════════════
-//  CONFIG — on/off features
-// ═══════════════════════════════════════════════════════════════════════
 /*
 #define QTD_CONST_ENCRYPTION          1   // Mã hoá string/constant
 #define QTD_CONST_ENCRYPT_THREADLOCAL 0   // 1 = mỗi thread giải riêng
@@ -34,7 +31,7 @@
 #define QTD_FAKE_SIGNATURES           0   // Fake PE sections (chỉ Windows)
 #define QTD_INLINE_STD                1   // Inline strcpy/strlen/... helpers
 #define QTD_KERNEL_MODE               0   // 1 = kernel driver mode
-// ── Compiler detection ───────────────────────────────────────────────
+
 #if defined(_MSC_VER) && !defined(__clang__)
 #   define _QTD_MSVC
 #   include <intrin.h>   // __readgsqword, __readfsdword, __debugbreak
@@ -43,8 +40,6 @@
 #   define _QTD_GNUC
 #endif
 
-// ── Architecture detection ───────────────────────────────────────────
-// [FIX] Thêm _M_ARM64 cho MSVC ARM64, _M_IX86 cho MSVC x86
 #if   defined(__x86_64__)  || defined(_M_X64)
 #   define _QTD_ARCH_X64
 #elif defined(__i386__)    || defined(_M_IX86) || defined(i386)
@@ -53,7 +48,6 @@
 #   define _QTD_ARCH_ARM64
 #endif
 
-// ── OS detection ─────────────────────────────────────────────────────
 #if defined(_WIN64) || defined(_WIN32)
 #   define _QTD_WINDOWS
 #elif defined(__linux__) || defined(__ANDROID__)
@@ -62,7 +56,6 @@
 #   define _QTD_APPLE
 #endif
 
-// ── Compiler attributes ──────────────────────────────────────────────
 #ifdef _QTD_MSVC
 #   define QTD_INLINE    __forceinline
 #   define QTD_NOINLINE  __declspec(noinline)
@@ -73,7 +66,6 @@
 #   define QTD_SECTION(x) __attribute__((section(x)))
 #endif
 
-// ── Fake PE signatures (Windows only) ───────────────────────────────
 #if QTD_FAKE_SIGNATURES && defined(_QTD_WINDOWS) && !QTD_KERNEL_MODE
 #   include <windows.h>
 #   ifdef _QTD_MSVC
@@ -106,9 +98,6 @@
     _QTD_FAKE_SIG(_qtd_sec,   ".dsstext", 0)
 #endif
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Compile-time seeding
-// ═══════════════════════════════════════════════════════════════════════
 constexpr uint32_t _qtd_fnv1a(const char* s, uint32_t h = 2166136261u) {
     return *s == '\0' ? h : _qtd_fnv1a(s + 1, (h ^ (uint8_t)*s) * 16777619u);
 }
@@ -122,9 +111,6 @@ static constexpr uint32_t _QTD_TIME_HASH = _qtd_fnv1a(__TIME__);
 #define _QTD_RND(lo, hi) \
     ((uint8_t)((lo) + (_QTD_CT_SEED % ((hi) - (lo) + 1u))))
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Key derivation + byte-level encrypt / decrypt
-// ═══════════════════════════════════════════════════════════════════════
 constexpr uint8_t _qtd_derive_key(uint8_t base, size_t pos, uint32_t salt) {
     uint32_t k = (uint32_t)base;
     k ^= (uint32_t)(pos * 2654435761u);
@@ -164,13 +150,6 @@ QTD_INLINE uint8_t _qtd_dec(uint8_t c, uint8_t k1, uint8_t k2,
     return (uint8_t)(_qtd_ror8((uint8_t)(c - dk2), rot) ^ dk1);
 }
 
-// ── Wide-char helpers ────────────────────────────────────────────────
-// [NEW] Mã hoá / giải từng byte riêng trong một phần tử kiểu T.
-// Hỗ trợ char (1B), wchar_t (2B/4B), char16_t (2B), char32_t (4B).
-// Khi sizeof(T)==1 thì tương đương đúng với hàm byte cũ.
-// Dùng uint64_t làm accumulator để tránh UB khi T là char signed.
-// Với char (1B): b chỉ = 0, shift = 0 → tương đương cast byte cũ.
-// Với wchar_t (2–4B), char16_t, char32_t: tích lũy từng byte.
 template<typename T>
 constexpr T _qtd_enc_t(T v, uint8_t k1, uint8_t k2,
                         size_t elem_idx, uint32_t salt) {
@@ -201,9 +180,6 @@ QTD_INLINE T _qtd_dec_t(T v, uint8_t k1, uint8_t k2,
     return static_cast<T>(out);
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  MBA expressions
-// ═══════════════════════════════════════════════════════════════════════
 #if QTD_MBA_EXPRESSIONS
 #   define MBA_XOR(a,b)  ((a) + (b) - 2*((a) & (b)))
 #   define MBA_XOR2(a,b) (((a) | (b)) - ((a) & (b)))
@@ -220,9 +196,6 @@ QTD_INLINE T _qtd_dec_t(T v, uint8_t k1, uint8_t k2,
 #   define MBA_AND(a,b)  ((a)&(b))
 #endif
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Opaque predicates
-// ═══════════════════════════════════════════════════════════════════════
 static volatile uint64_t _qtd_op_n = 0x9E3779B97F4A7C15ULL;
 
 static QTD_NOINLINE bool _qtd_pred_true() {
@@ -237,26 +210,8 @@ static QTD_NOINLINE bool _qtd_pred_false() {
 #define _QTD_TRUE  (_qtd_pred_true())
 #define _QTD_FALSE (_qtd_pred_false())
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Indirect branching  (_QTD_IB)  +  stack-frame breaker (_QTD_BREAK_FRAME)
-//
-//  _QTD_IB:
-//    • KHÔNG bao giờ thực thi (điều kiện luôn false ở runtime)
-//    • Phá IDA/Ghidra linear-sweep: tạo byte rác hoặc indirect call
-//      mà disassembler không thể resolve tĩnh
-//
-//  _QTD_BREAK_FRAME:
-//    • Làm IDA mất theo dõi delta RSP/SP → stack frame sai
-//    • x64/x86 GCC: sub/add rsp tạo delta giả
-//    • ARM64  GCC: sub/add sp tạo delta giả
-//    • MSVC       : volatile _alloca với kích thước runtime opaque
-// ═══════════════════════════════════════════════════════════════════════
 #if QTD_INDIRECT_BRANCHING
 
-// ── GCC/Clang · x86-64 ───────────────────────────────────────────────
-// Kỹ thuật gốc: jz qua 1 byte 0xE8 (prefix CALL giả).
-// IDA linear-sweep nhìn thấy 0xE8 và decode sai 4 byte tiếp theo.
-// L2: push+indirect-jmp (br [rax]) qua volatile rax → IDA không resolve.
 #   if defined(_QTD_ARCH_X64) && defined(_QTD_GNUC)
 
 #       define _QTD_IB_L1                                               \
@@ -279,16 +234,12 @@ static QTD_NOINLINE bool _qtd_pred_false() {
 
 #       define _QTD_IB  _QTD_IB_L1 _QTD_IB_L2
 
-        // sub/add rsp: tạo delta giả khiến IDA tính sai frame size
-        // Ghi chú: bỏ "rsp" khỏi clobber (deprecated GCC ≥ 14);
-        // "memory" đủ để ngăn compiler reorder, asm vẫn in/out rsp.
 #       define _QTD_BREAK_FRAME()                                       \
             __asm__ volatile(                                           \
                 "sub $0x80, %%rsp\n\t"                                  \
                 "add $0x80, %%rsp\n\t"                                  \
                 : : : "memory")
 
-// ── GCC/Clang · x86-32 ───────────────────────────────────────────────
 #   elif defined(_QTD_ARCH_X86) && defined(_QTD_GNUC)
 
 #       define _QTD_IB                                                  \
@@ -304,11 +255,6 @@ static QTD_NOINLINE bool _qtd_pred_false() {
                 "add $0x40, %%esp\n\t"                                  \
                 : : : "memory")
 
-// ── GCC/Clang · ARM64 ────────────────────────────────────────────────
-// [NEW] adr x16, 1f  → load địa chỉ label 1 vào x16
-//       br  x16      → indirect branch (IDA không biết target tĩnh)
-//       .long dead   → 4 byte chết giữa br và label 1:
-//                       IDA linear-sweep fall-through sẽ decode sai
 #   elif defined(_QTD_ARCH_ARM64) && defined(_QTD_GNUC)
 
 #       define _QTD_IB                                                  \
@@ -325,14 +271,6 @@ static QTD_NOINLINE bool _qtd_pred_false() {
                 "add sp, sp, #16\n\t"                                   \
                 : : : "memory")
 
-// ── MSVC · x64 hoặc ARM64 (không có inline asm) ──────────────────────
-// [NEW] Chiến lược thuần C++:
-//   _QTD_IB:
-//     1. Indirect call qua volatile function pointer — CFG không resolve
-//     2. __debugbreak() trong dead branch — INT3/BRK gây nhầm lẫn
-//        exception-path analysis của decompiler
-//   _QTD_BREAK_FRAME:
-//     _alloca với kích thước runtime-opaque → IDA mất tracking RSP delta
 #   elif defined(_QTD_MSVC)
 
     QTD_NOINLINE static void _qtd_ib_sink() { /* opaque no-op target */ }
@@ -355,7 +293,6 @@ static QTD_NOINLINE bool _qtd_pred_false() {
                 _qtd_p[0] = 0;   /* write buộc compiler không xoá */   \
             } while(0)
 
-// ── Fallback (platform chưa hỗ trợ) ──────────────────────────────────
 #   else
 #       define _QTD_IB            ((void)0)
 #       define _QTD_BREAK_FRAME() ((void)0)
@@ -366,9 +303,6 @@ static QTD_NOINLINE bool _qtd_pred_false() {
 #   define _QTD_BREAK_FRAME() ((void)0)
 #endif
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Anti-debug
-// ═══════════════════════════════════════════════════════════════════════
 #if QTD_ANTI_DEBUG
 
 #   if defined(_QTD_LINUX)
@@ -384,10 +318,7 @@ static QTD_NOINLINE bool _qtd_pred_false() {
         static QTD_NOINLINE bool _qtd_is_debugged() {
             if (IsDebuggerPresent()) return true;
             volatile uint8_t ntgf = 0;
-            // [FIX] Tách GCC vs MSVC để tránh lỗi biên dịch MSVC
-            // (MSVC x64/ARM64 không hỗ trợ inline asm)
 #           if defined(_QTD_GNUC)
-                // GCC/Clang: đọc PEB.NtGlobalFlag qua segment register
 #               if defined(_QTD_ARCH_X64)
                     __asm__ volatile(
                         "mov %%gs:0x60, %%rax\n\t"
@@ -400,17 +331,12 @@ static QTD_NOINLINE bool _qtd_pred_false() {
                         : "=r"(ntgf) : : "eax");
 #               endif
 #           elif defined(_QTD_MSVC)
-                // [FIX] MSVC: dùng intrinsic __readgsqword / __readfsdword
-                // thay cho inline asm không tương thích
 #               if defined(_QTD_ARCH_X64)
-                    // GS:0x60 → PEB*,  PEB+0x68 → NtGlobalFlag
                     ntgf = *(volatile uint8_t*)(__readgsqword(0x60) + 0x68);
 #               elif defined(_QTD_ARCH_X86)
                     ntgf = *(volatile uint8_t*)(
                                (uintptr_t)__readfsdword(0x30) + 0x68);
 #               elif defined(_QTD_ARCH_ARM64)
-                    // ARM64 Windows: IsDebuggerPresent() đã cover trường hợp
-                    // chính. NtCurrentTeb() cần thêm header nội bộ, bỏ qua.
                     ntgf = 0;
 #               endif
 #           endif
@@ -442,9 +368,6 @@ static QTD_NOINLINE bool _qtd_pred_false() {
 #   define QTD_ANTI_DEBUG_CHECK() ((void)0)
 #endif
 
-// ─────────────────────────────────────────────────────────────────────
-//  Control-flow helpers
-// ─────────────────────────────────────────────────────────────────────
 #define _QTD_BLOCK_COND(c, blk)  if (c) { _QTD_IB; blk; }
 #define _QTD_BLOCK_TRUE(blk)     _QTD_BLOCK_COND(_QTD_TRUE,  blk)
 #define _QTD_BLOCK_FALSE(blk)    _QTD_BLOCK_COND(_QTD_FALSE, blk)
@@ -459,11 +382,6 @@ static QTD_INLINE int _qtd_int_proxy(long long v) {
     return (int)a;
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  namespace qtdenc — obfuscator / tl_decryptor
-//  [FIX/NEW] Dùng _qtd_enc_t / _qtd_dec_t thay vì cast uint8_t trực tiếp
-//            → hỗ trợ wchar_t, char16_t, char32_t (và raw string tương ứng)
-// ═══════════════════════════════════════════════════════════════════════
 namespace qtdenc {
 
     template<typename T>
@@ -475,16 +393,11 @@ namespace qtdenc {
     template<typename T>
     constexpr size_t getsize(T)             { return 1; }
 
-    // gettype: suy ra kiểu phần tử
     template<typename T, size_t N>
     constexpr T gettype(const T(&)[N]);
     template<typename T>
     constexpr T gettype(T);
 
-    // ── obfuscator ─────────────────────────────────────────────────────
-    // Hỗ trợ đầy đủ: char, wchar_t, char16_t, char32_t
-    // Mọi string literal (kể cả L"...", u"...", U"...", R"(...)",
-    // LR"(...)"...) đều được mã hoá từng byte của mỗi phần tử.
     template<class T, size_t SZ, uint8_t K1, uint8_t K2, uint32_t SALT>
     class obfuscator {
     public:
@@ -523,7 +436,6 @@ namespace qtdenc {
         QTD_INLINE operator T()  { return decrypt()[0]; }
     };
 
-    // ── tl_decryptor (thread-local mode) ─────────────────────────────
     template<class T, size_t SZ, uint8_t K1, uint8_t K2, uint32_t SALT>
     class tl_decryptor {
     public:
@@ -549,17 +461,6 @@ namespace qtdenc {
 
 } // namespace qtdenc
 
-// ═══════════════════════════════════════════════════════════════════════
-//  QTDENC — macro chính mã hoá string literal
-//
-//  Sử dụng:
-//    QTDENC("hello")          → const char*
-//    QTDENC(L"wide")          → wchar_t*    [NEW]
-//    QTDENC(u"utf16")         → char16_t*   [NEW]
-//    QTDENC(U"utf32")         → char32_t*   [NEW]
-//    QTDENC(R"(raw\nstring)") → const char* [raw string tự động]
-//    QTDENC(LR"(wide raw)")   → wchar_t*    [NEW]
-// ═══════════════════════════════════════════════════════════════════════
 #if QTD_CONST_ENCRYPTION
 
 #   define _QTDENC_NORMAL(x)                                             \
@@ -601,9 +502,6 @@ namespace qtdenc {
 #   define QTDENC(x) (x)
 #endif
 
-// ─────────────────────────────────────────────────────────────────────
-//  QTDENC_INT
-// ─────────────────────────────────────────────────────────────────────
 #define QTDENC_INT(x)                                               \
     ([&]() -> decltype(x) {                                         \
         constexpr auto _m = (decltype(x))_QTD_RND(1, 0x7E);        \
@@ -611,15 +509,6 @@ namespace qtdenc {
         return (decltype(x))MBA_XOR(_a, _m);                        \
     }())
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Bit-cast helpers — constexpr-compatible trên mọi compiler
-//
-//  [FIX] MSVC không có __builtin_bit_cast.
-//  Thứ tự ưu tiên:
-//    1. GCC/Clang  → __builtin_bit_cast   (constexpr, không cần C++20)
-//    2. C++20 any  → std::bit_cast        (constexpr, tiêu chuẩn)
-//    3. MSVC C++14/17 → union type-pun    (Microsoft extension, constexpr OK)
-// ═══════════════════════════════════════════════════════════════════════
 #if defined(__GNUC__) || defined(__clang__)
     // GCC ≥ 10, Clang ≥ 9
 #   define _QTD_F2U(f)  (__builtin_bit_cast(uint32_t, (float)(f)))
@@ -636,9 +525,6 @@ namespace qtdenc {
 #   define _QTD_U2D(u)  (::std::bit_cast<double>((uint64_t)(u)))
 
 #else
-    // [FIX] MSVC C++14/17 fallback: union type-pun.
-    // MSVC cho phép đọc union member khác member vừa ghi trong constexpr
-    // (Microsoft extension, không phải UB trong MSVC).
     namespace _qtd_bp {
         union _f32 {
             float    f; uint32_t u;
@@ -657,10 +543,6 @@ namespace qtdenc {
 #   define _QTD_U2D(u)  (_qtd_bp::_f64((uint64_t)(u)).d)
 #endif
 
-// ── QTDENC_FLOAT ──────────────────────────────────────────────────────
-// [FIX] Hoạt động trên MSVC (không phụ thuộc __builtin_bit_cast).
-// Bit pattern của float được XOR với mask compile-time;
-// mask được XOR lại ở runtime qua MBA để che giấu giá trị thật.
 #define QTDENC_FLOAT(x)                                             \
     ([&]() -> float {                                               \
         constexpr uint32_t _fb = _QTD_F2U((float)(x));             \
@@ -670,10 +552,6 @@ namespace qtdenc {
         return _QTD_U2F((uint32_t)_fd);                            \
     }())
 
-// ── QTDENC_DOUBLE ─────────────────────────────────────────────────────
-// [NEW] Tương tự QTDENC_FLOAT nhưng cho double (64-bit).
-// Mask 64-bit được tạo từ hai _QTD_RND độc lập (mỗi cái dùng __COUNTER__
-// khác nhau → seed khác nhau).
 #define QTDENC_DOUBLE(x)                                            \
     ([&]() -> double {                                              \
         constexpr uint64_t _db = _QTD_D2U((double)(x));            \
@@ -728,9 +606,6 @@ static void _qtd_dc9(){}  static void _qtd_dc10(){}
 #   define else      else _QTD_BLOCK_FALSE(_qtd_int_proxy(0);) else
 #endif
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Inline string helpers
-// ═══════════════════════════════════════════════════════════════════════
 #if QTD_INLINE_STD
 
     static QTD_INLINE void qtd_strcpy(char* d, const char* s) {
@@ -793,7 +668,6 @@ static void _qtd_dc9(){}  static void _qtd_dc10(){}
         return dst;
     }
 
-    // [NEW] Wide-char strlen (wchar_t / char16_t / char32_t)
     static QTD_INLINE size_t qtd_wcslen(const wchar_t* s) {
         const wchar_t* p = s; while (*p) p++; return (size_t)(p - s);
     }
