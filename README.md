@@ -1,2 +1,2 @@
-# obf
-C/C++
+//main.cpp
+#include "QUOCTOANDEV.h"
