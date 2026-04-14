@@ -1,703 +1,384 @@
-#ifndef QUOCTOANDEV_H
-#define QUOCTOANDEV_H
-/* QUOCTOANDEV - Encryption Library */
-// Remake by @quoctoansieudz
-// Pls don't copy without crediting, thanks :)
-
-#include <cstddef>
-#include <cstdint>
-#include <type_traits>
-
 /*
-#define QTD_CONST_ENCRYPTION          1   // Mã hoá string/constant
-#define QTD_CONST_ENCRYPT_THREADLOCAL 0   // 1 = mỗi thread giải riêng
-#define QTD_CFLOW_BRANCHING           1   // Bọc if/for/while/switch/return
-#define QTD_CFLOW_CONST_DECRYPTION    1   // Nhánh giả trong vòng lặp giải
-#define QTD_INDIRECT_BRANCHING        1   // Phá linear-sweep disassembler
-#define QTD_MBA_EXPRESSIONS           1   // Mixed Boolean Arithmetic
-#define QTD_ANTI_DEBUG                0   // Phát hiện debugger lúc runtime
-#define QTD_FAKE_SIGNATURES           0   // Fake PE sections (chỉ Windows)
-#define QTD_INLINE_STD                1   // Inline strcpy/strlen/... helpers
-#define QTD_KERNEL_MODE               0   // 1 = kernel driver mode
+================================================================================
+                            QUOCTOANDEV (FIXED)
+          Comprehensive Code & Data Protection Framework
+            Combining Compile-time & Runtime Obfuscation
+================================================================================
+
+@author QuocToanDev
+
+Copyright (c) 2026 QuocToanDev Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+================================================================================
 */
 
-#define QTD_CONST_ENCRYPTION          1   // Mã hoá string/constant
-#define QTD_CONST_ENCRYPT_THREADLOCAL 1   // 1 = mỗi thread giải riêng
-#define QTD_CFLOW_BRANCHING           1   // Bọc if/for/while/switch/return
-#define QTD_CFLOW_CONST_DECRYPTION    1   // Nhánh giả trong vòng lặp giải
-#define QTD_INDIRECT_BRANCHING        1   // Phá linear-sweep disassembler
-#define QTD_MBA_EXPRESSIONS           1   // Mixed Boolean Arithmetic
-#define QTD_ANTI_DEBUG                0   // Phát hiện debugger lúc runtime
-#define QTD_FAKE_SIGNATURES           0   // Fake PE sections (chỉ Windows)
-#define QTD_INLINE_STD                1   // Inline strcpy/strlen/... helpers
-#define QTD_KERNEL_MODE               0   // 1 = kernel driver mode
+#ifndef QUOCTOANDEV_H
+#define QUOCTOANDEV_H
 
-#if defined(_MSC_VER) && !defined(__clang__)
-#   define _QTD_MSVC
-#   include <intrin.h>   // __readgsqword, __readfsdword, __debugbreak
-#   include <malloc.h>   // _alloca (dùng cho _QTD_BREAK_FRAME)
-#elif defined(__GNUC__) || defined(__clang__)
-#   define _QTD_GNUC
-#endif
+#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
+#include <cstring>
 
-#if   defined(__x86_64__)  || defined(_M_X64)
-#   define _QTD_ARCH_X64
-#elif defined(__i386__)    || defined(_M_IX86) || defined(i386)
-#   define _QTD_ARCH_X86
-#elif defined(__aarch64__) || defined(_M_ARM64)   // ← MSVC ARM64
-#   define _QTD_ARCH_ARM64
-#endif
+typedef uint8_t  qtd_uint8;
+typedef uint32_t qtd_uint32;
+typedef uint64_t qtd_uint64;
+typedef size_t   qtd_size;
 
-#if defined(_WIN64) || defined(_WIN32)
-#   define _QTD_WINDOWS
-#elif defined(__linux__) || defined(__ANDROID__)
-#   define _QTD_LINUX
-#elif defined(__APPLE__)
-#   define _QTD_APPLE
-#endif
-
-#ifdef _QTD_MSVC
-#   define QTD_INLINE    __forceinline
-#   define QTD_NOINLINE  __declspec(noinline)
-#   define QTD_SECTION(x) __declspec(allocate(x))
+#ifdef _MSC_VER
+    #define QTD_FORCEINLINE __forceinline
+    #define QTD_INLINE      __inline
 #else
-#   define QTD_INLINE    __attribute__((always_inline)) inline
-#   define QTD_NOINLINE  __attribute__((noinline))
-#   define QTD_SECTION(x) __attribute__((section(x)))
+    #define QTD_FORCEINLINE __attribute__((always_inline)) inline
+    #define QTD_INLINE      inline
 #endif
 
-#if QTD_FAKE_SIGNATURES && defined(_QTD_WINDOWS) && !QTD_KERNEL_MODE
-#   include <windows.h>
-#   ifdef _QTD_MSVC
-#       pragma section(".arch")
-#       pragma section(".srdata")
-#       pragma section(".xpdata")
-#       pragma section(".xdata")
-#       pragma section(".xtls")
-#       pragma section(".themida")
-#       pragma section(".vmp0")
-#       pragma section(".vmp1")
-#       pragma section(".vmp2")
-#       pragma section(".enigma1")
-#       pragma section(".enigma2")
-#       pragma section(".dsstext")
-#   endif
-#   define _QTD_FAKE_SIG(name, sec, sig) \
-        QTD_SECTION(sec) volatile static const char* name = (const char*)(sig);
-    _QTD_FAKE_SIG(_qtd_vmp0,  ".vmp0",    0)
-    _QTD_FAKE_SIG(_qtd_vmp1,  ".vmp1",    0)
-    _QTD_FAKE_SIG(_qtd_vmp2,  ".vmp2",    0)
-    _QTD_FAKE_SIG(_qtd_enig1, ".enigma1", 0)
-    _QTD_FAKE_SIG(_qtd_enig2, ".enigma2", 0)
-    _QTD_FAKE_SIG(_qtd_thm,   ".themida", 0)
-    _QTD_FAKE_SIG(_qtd_dnv1,  ".arch",    0)
-    _QTD_FAKE_SIG(_qtd_dnv2,  ".srdata",  0)
-    _QTD_FAKE_SIG(_qtd_dnv3,  ".xdata",   0)
-    _QTD_FAKE_SIG(_qtd_dnv4,  ".xtls",
-        "\x64\x65\x6E\x75\x76\x6F\x5F\x61\x74\x64\x00\x00\x00\x00\x00\x00")
-    _QTD_FAKE_SIG(_qtd_sec,   ".dsstext", 0)
+#if defined(_WIN32) || defined(_WIN64)
+    #if defined(_WIN64)
+        #define QTD_ENV64
+    #else
+        #define QTD_ENV32
+    #endif
+#elif defined(__GNUC__)
+    #if defined(__x86_64__) || defined(__ppc64__) || defined(__aarch64__)
+        #define QTD_ENV64
+    #else
+        #define QTD_ENV32
+    #endif
 #endif
 
-constexpr uint32_t _qtd_fnv1a(const char* s, uint32_t h = 2166136261u) {
-    return *s == '\0' ? h : _qtd_fnv1a(s + 1, (h ^ (uint8_t)*s) * 16777619u);
-}
+namespace qtd_crypto {
 
-static constexpr uint32_t _QTD_FILE_HASH = _qtd_fnv1a(__FILE__);
-static constexpr uint32_t _QTD_TIME_HASH = _qtd_fnv1a(__TIME__);
+    static constexpr qtd_size COMPILE_BASE_KEY = 
+        ((__TIME__[7] - '0') +
+         (__TIME__[6] - '0') * 10 +
+         (__TIME__[4] - '0') * 60 +
+         (__TIME__[3] - '0') * 600 +
+         (__TIME__[1] - '0') * 3600 +
+         (__TIME__[0] - '0') * 36000);
 
-#define _QTD_CT_SEED  ((_QTD_FILE_HASH ^ _QTD_TIME_HASH                \
-                       ^ ((uint32_t)__COUNTER__ * 2246822519u)          \
-                       ^ ((uint32_t)__LINE__    * 3266489917u)) & 0xFFFFFFFFu)
-#define _QTD_RND(lo, hi) \
-    ((uint8_t)((lo) + (_QTD_CT_SEED % ((hi) - (lo) + 1u))))
-
-constexpr uint8_t _qtd_derive_key(uint8_t base, size_t pos, uint32_t salt) {
-    uint32_t k = (uint32_t)base;
-    k ^= (uint32_t)(pos * 2654435761u);
-    k ^= salt;
-    k ^= k >> 16; k *= 0x85ebca6bu;
-    k ^= k >> 13; k *= 0xc2b2ae35u;
-    k ^= k >> 16;
-    return (uint8_t)(k & 0xFF);
-}
-
-constexpr uint8_t _qtd_rol8(uint8_t v, uint8_t n) {
-    n &= 7u;
-    return (uint8_t)((v << n) | (v >> (8u - n)));
-}
-constexpr uint8_t _qtd_ror8(uint8_t v, uint8_t n) {
-    n &= 7u;
-    return (uint8_t)((v >> n) | (v << (8u - n)));
-}
-
-static volatile uint8_t _qtd_dec_mask = 0;
-
-constexpr uint8_t _qtd_enc(uint8_t p, uint8_t k1, uint8_t k2,
-                            size_t i, uint32_t salt) {
-    const uint8_t dk1 = _qtd_derive_key(k1, i, salt);
-    const uint8_t dk2 = _qtd_derive_key(k2, i, salt ^ 0xBEEFu);
-    const uint8_t rot = (dk1 & 7u) | 1u;
-    return (uint8_t)(_qtd_rol8((uint8_t)(p ^ dk1), rot) + dk2);
-}
-
-QTD_INLINE uint8_t _qtd_dec(uint8_t c, uint8_t k1, uint8_t k2,
-                              size_t i, uint32_t salt) {
-    const uint8_t rk1 = (uint8_t)(k1 ^ _qtd_dec_mask);
-    const uint8_t rk2 = (uint8_t)(k2 ^ _qtd_dec_mask);
-    const uint8_t dk1 = _qtd_derive_key(rk1, i, salt);
-    const uint8_t dk2 = _qtd_derive_key(rk2, i, salt ^ 0xBEEFu);
-    const uint8_t rot = (dk1 & 7u) | 1u;
-    return (uint8_t)(_qtd_ror8((uint8_t)(c - dk2), rot) ^ dk1);
-}
-
-template<typename T>
-constexpr T _qtd_enc_t(T v, uint8_t k1, uint8_t k2,
-                        size_t elem_idx, uint32_t salt) {
-    uint64_t out = 0;
-    for (size_t b = 0; b < sizeof(T); ++b) {
-        // Cast v → uint64_t trước (unsigned, well-defined kể cả với char âm),
-        // sau đó shift và truncate xuống uint8_t.
-        const uint8_t byte_in  = static_cast<uint8_t>(
-            (static_cast<uint64_t>(v) >> (b * 8u)) & 0xFFu);
-        const uint8_t byte_out = _qtd_enc(byte_in, k1, k2,
-                                          elem_idx * sizeof(T) + b, salt);
-        out |= static_cast<uint64_t>(byte_out) << (b * 8u);
-    }
-    return static_cast<T>(out);
-}
-
-template<typename T>
-QTD_INLINE T _qtd_dec_t(T v, uint8_t k1, uint8_t k2,
-                          size_t elem_idx, uint32_t salt) {
-    uint64_t out = 0;
-    for (size_t b = 0; b < sizeof(T); ++b) {
-        const uint8_t byte_in  = static_cast<uint8_t>(
-            (static_cast<uint64_t>(v) >> (b * 8u)) & 0xFFu);
-        const uint8_t byte_out = _qtd_dec(byte_in, k1, k2,
-                                          elem_idx * sizeof(T) + b, salt);
-        out |= static_cast<uint64_t>(byte_out) << (b * 8u);
-    }
-    return static_cast<T>(out);
-}
-
-#if QTD_MBA_EXPRESSIONS
-#   define MBA_XOR(a,b)  ((a) + (b) - 2*((a) & (b)))
-#   define MBA_XOR2(a,b) (((a) | (b)) - ((a) & (b)))
-#   define MBA_ADD(a,b)  (MBA_XOR((a),(b)) + 2*((a)&(b)))
-#   define MBA_NOT(a)    (-(a) - 1)
-#   define MBA_OR(a,b)   (MBA_ADD((a),(b)) - ((a)&(b)))
-#   define MBA_AND(a,b)  ((MBA_ADD((a),(b)) - MBA_XOR((a),(b))) / 2)
-#else
-#   define MBA_XOR(a,b)  ((a)^(b))
-#   define MBA_XOR2(a,b) ((a)^(b))
-#   define MBA_ADD(a,b)  ((a)+(b))
-#   define MBA_NOT(a)    (~(a))
-#   define MBA_OR(a,b)   ((a)|(b))
-#   define MBA_AND(a,b)  ((a)&(b))
-#endif
-
-static volatile uint64_t _qtd_op_n = 0x9E3779B97F4A7C15ULL;
-
-static QTD_NOINLINE bool _qtd_pred_true() {
-    volatile uint64_t n = _qtd_op_n;
-    return ((n * (n + 1u)) & 1u) == 0u;
-}
-static QTD_NOINLINE bool _qtd_pred_false() {
-    volatile uint64_t n = _qtd_op_n;
-    return ((n * (n + 1u)) & 1u) == 1u;
-}
-
-#define _QTD_TRUE  (_qtd_pred_true())
-#define _QTD_FALSE (_qtd_pred_false())
-
-#if QTD_INDIRECT_BRANCHING
-
-#   if defined(_QTD_ARCH_X64) && defined(_QTD_GNUC)
-
-#       define _QTD_IB_L1                                               \
-            __asm__ volatile(                                           \
-                "xor %%rax, %%rax\n\t"                                  \
-                "jz  1f\n\t"                                            \
-                ".byte 0xE8\n\t"       /* dead CALL prefix — rác 1B */ \
-                "1:" : : : "rax");
-
-#       define _QTD_IB_L2                                               \
-            __asm__ volatile(                                           \
-                "lea 1f(%%rip), %%rax\n\t"                              \
-                "push %%rax\n\t"                                        \
-                "xor %%rbx, %%rbx\n\t"                                  \
-                "jz  2f\n\t"                                            \
-                ".byte 0xFF, 0x20\n\t" /* dead jmp [rax] — IDA lost */ \
-                "2:\n\t"                                                \
-                "pop %%rax\n\t"                                         \
-                "1:" : : : "rax", "rbx");
-
-#       define _QTD_IB  _QTD_IB_L1 _QTD_IB_L2
-
-#       define _QTD_BREAK_FRAME()                                       \
-            __asm__ volatile(                                           \
-                "sub $0x80, %%rsp\n\t"                                  \
-                "add $0x80, %%rsp\n\t"                                  \
-                : : : "memory")
-
-#   elif defined(_QTD_ARCH_X86) && defined(_QTD_GNUC)
-
-#       define _QTD_IB                                                  \
-            __asm__ volatile(                                           \
-                "xor %%eax, %%eax\n\t"                                  \
-                "jz  1f\n\t"                                            \
-                ".byte 0xE8\n\t"       /* dead CALL prefix */          \
-                "1:");
-
-#       define _QTD_BREAK_FRAME()                                       \
-            __asm__ volatile(                                           \
-                "sub $0x40, %%esp\n\t"                                  \
-                "add $0x40, %%esp\n\t"                                  \
-                : : : "memory")
-
-#   elif defined(_QTD_ARCH_ARM64) && defined(_QTD_GNUC)
-
-#       define _QTD_IB                                                  \
-            __asm__ volatile(                                           \
-                "adr  x16, 1f\n\t"                                      \
-                "br   x16\n\t"                                          \
-                ".long 0xD63F0200\n\t" /* dead blr x16 — rác 4B */    \
-                "1:\n\t"                                                \
-                : : : "x16")
-
-#       define _QTD_BREAK_FRAME()                                       \
-            __asm__ volatile(                                           \
-                "sub sp, sp, #16\n\t"                                   \
-                "add sp, sp, #16\n\t"                                   \
-                : : : "memory")
-
-#   elif defined(_QTD_MSVC)
-
-    QTD_NOINLINE static void _qtd_ib_sink() { /* opaque no-op target */ }
-    static volatile void(*_qtd_ib_vfp)() = _qtd_ib_sink;
-
-#       define _QTD_IB                                                  \
-            do {                                                        \
-                if (_qtd_pred_false()) {                                \
-                    _qtd_ib_vfp();   /* indirect call — unresolvable */ \
-                    __debugbreak();  /* INT3/BRK trong dead code */     \
-                }                                                       \
-            } while(0)
-
-#       define _QTD_BREAK_FRAME()                                       \
-            do {                                                        \
-                volatile int _qtd_sz =                                  \
-                    (int)((_qtd_op_n & 0xFu) + 16u); /* opaque */     \
-                volatile char* _qtd_p =                                 \
-                    (volatile char*)_alloca(_qtd_sz);                  \
-                _qtd_p[0] = 0;   /* write buộc compiler không xoá */   \
-            } while(0)
-
-#   else
-#       define _QTD_IB            ((void)0)
-#       define _QTD_BREAK_FRAME() ((void)0)
-#   endif
-
-#else  // QTD_INDIRECT_BRANCHING == 0
-#   define _QTD_IB            ((void)0)
-#   define _QTD_BREAK_FRAME() ((void)0)
-#endif
-
-#if QTD_ANTI_DEBUG
-
-#   if defined(_QTD_LINUX)
-#       include <sys/ptrace.h>
-        static QTD_NOINLINE bool _qtd_is_debugged() {
-            return ptrace(PTRACE_TRACEME, 0, 0, 0) == -1;
-        }
-
-#   elif defined(_QTD_WINDOWS) && !QTD_KERNEL_MODE
-#       ifndef _WINDOWS_
-#           include <windows.h>
-#       endif
-        static QTD_NOINLINE bool _qtd_is_debugged() {
-            if (IsDebuggerPresent()) return true;
-            volatile uint8_t ntgf = 0;
-#           if defined(_QTD_GNUC)
-#               if defined(_QTD_ARCH_X64)
-                    __asm__ volatile(
-                        "mov %%gs:0x60, %%rax\n\t"
-                        "movb 0x68(%%rax), %0"
-                        : "=r"(ntgf) : : "rax");
-#               elif defined(_QTD_ARCH_X86)
-                    __asm__ volatile(
-                        "mov %%fs:0x30, %%eax\n\t"
-                        "movb 0x68(%%eax), %0"
-                        : "=r"(ntgf) : : "eax");
-#               endif
-#           elif defined(_QTD_MSVC)
-#               if defined(_QTD_ARCH_X64)
-                    ntgf = *(volatile uint8_t*)(__readgsqword(0x60) + 0x68);
-#               elif defined(_QTD_ARCH_X86)
-                    ntgf = *(volatile uint8_t*)(
-                               (uintptr_t)__readfsdword(0x30) + 0x68);
-#               elif defined(_QTD_ARCH_ARM64)
-                    ntgf = 0;
-#               endif
-#           endif
-            return (ntgf & 0x70) != 0;
-        }
-
-#   elif defined(_QTD_APPLE)
-#       include <sys/types.h>
-#       include <sys/sysctl.h>
-        static QTD_NOINLINE bool _qtd_is_debugged() {
-            int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
-            struct kinfo_proc info{};
-            size_t sz = sizeof(info);
-            sysctl(mib, 4, &info, &sz, nullptr, 0);
-            return (info.kp_proc.p_flag & P_TRACED) != 0;
-        }
-
-#   else
-        static QTD_NOINLINE bool _qtd_is_debugged() { return false; }
-#   endif
-
-#   define QTD_ANTI_DEBUG_CHECK() do {                                  \
-        if (_qtd_is_debugged()) {                                       \
-            volatile int* _p = nullptr; (void)*_p;                     \
-        }                                                               \
-    } while(0)
-
-#else
-#   define QTD_ANTI_DEBUG_CHECK() ((void)0)
-#endif
-
-#define _QTD_BLOCK_COND(c, blk)  if (c) { _QTD_IB; blk; }
-#define _QTD_BLOCK_TRUE(blk)     _QTD_BLOCK_COND(_QTD_TRUE,  blk)
-#define _QTD_BLOCK_FALSE(blk)    _QTD_BLOCK_COND(_QTD_FALSE, blk)
-
-// [NEW] _QTD_BREAK_FRAME() thêm vào _qtd_int_proxy để phá frame IDA
-static QTD_INLINE int _qtd_int_proxy(long long v) {
-    _QTD_IB;
-    _QTD_BREAK_FRAME();
-    volatile long long a = v;
-    _QTD_BLOCK_FALSE(return (int)(a ^ 0xDEAD);)
-    _QTD_BLOCK_TRUE( if (_QTD_TRUE) return (int)a; )
-    return (int)a;
-}
-
-namespace qtdenc {
-
-    template<typename T>
-    using clean_t = std::remove_const_t<std::remove_reference_t<T>>;
-
-    // getsize: trả về N cho mảng, 1 cho scalar
-    template<typename T, size_t N>
-    constexpr size_t getsize(const T(&)[N]) { return N; }
-    template<typename T>
-    constexpr size_t getsize(T)             { return 1; }
-
-    template<typename T, size_t N>
-    constexpr T gettype(const T(&)[N]);
-    template<typename T>
-    constexpr T gettype(T);
-
-    template<class T, size_t SZ, uint8_t K1, uint8_t K2, uint32_t SALT>
-    class obfuscator {
+    template<qtd_uint32 seed, qtd_size iterations>
+    class XorShift32 {
+        static constexpr qtd_uint32 x = seed ^ (seed << 13);
+        static constexpr qtd_uint32 y = x ^ (x >> 17);
+        static constexpr qtd_uint32 z = y ^ (y << 5);
     public:
-        T    m_data[SZ]{};
-        bool decrypted = false;
-
-        constexpr obfuscator(const T* src) {
-            for (size_t i = 0; i < SZ; ++i)
-                m_data[i] = _qtd_enc_t<T>(src[i], K1, K2, i, SALT);
-        }
-        constexpr obfuscator(T v) {
-            m_data[0] = _qtd_enc_t<T>(v, K1, K2, 0, SALT);
-        }
-
-        QTD_INLINE T* decrypt() {
-            _QTD_IB;
-            _QTD_BREAK_FRAME();
-            if (!decrypted) {
-                for (size_t i = 0; i < SZ; ++i) {
-#if QTD_CFLOW_CONST_DECRYPTION
-                    _QTD_BLOCK_FALSE(
-                        volatile uint8_t _x = (uint8_t)(i * 7u); (void)_x;)
-                    _QTD_BLOCK_TRUE(
-#endif
-                        m_data[i] = _qtd_dec_t<T>(m_data[i], K1, K2, i, SALT);
-#if QTD_CFLOW_CONST_DECRYPTION
-                    )
-#endif
-                }
-                decrypted = true;
-            }
-            return m_data;
-        }
-
-        QTD_INLINE operator T*() { return decrypt(); }
-        QTD_INLINE operator T()  { return decrypt()[0]; }
+        static constexpr qtd_uint32 value = XorShift32<z, iterations - 1>::value;
     };
 
-    template<class T, size_t SZ, uint8_t K1, uint8_t K2, uint32_t SALT>
-    class tl_decryptor {
+    template<qtd_uint32 seed>
+    class XorShift32<seed, 0> {
     public:
-        T    m_data[SZ]{};
-        bool decrypted = false;
-
-        QTD_INLINE tl_decryptor(const obfuscator<T,SZ,K1,K2,SALT>& src) {
-            for (size_t i = 0; i < SZ; ++i)
-                m_data[i] = src.m_data[i];
-        }
-
-        QTD_INLINE T* decrypt() {
-            if (!decrypted) {
-                for (size_t i = 0; i < SZ; ++i)
-                    m_data[i] = _qtd_dec_t<T>(m_data[i], K1, K2, i, SALT);
-                decrypted = true;
-            }
-            return m_data;
-        }
-        QTD_INLINE operator T*() { return decrypt(); }
-        QTD_INLINE operator T()  { return decrypt()[0]; }
+        static constexpr qtd_uint32 value = seed;
     };
 
-} // namespace qtdenc
+    template<qtd_uint64 seed, qtd_size iterations>
+    class XorShift64 {
+        static constexpr qtd_uint64 x = seed ^ (seed << 13);
+        static constexpr qtd_uint64 y = x ^ (x >> 7);
+        static constexpr qtd_uint64 z = y ^ (y << 17);
+    public:
+        static constexpr qtd_uint64 value = XorShift64<z, iterations - 1>::value;
+    };
 
-#if QTD_CONST_ENCRYPTION
+    template<qtd_uint64 seed>
+    class XorShift64<seed, 0> {
+    public:
+        static constexpr qtd_uint64 value = seed;
+    };
 
-#   define _QTDENC_NORMAL(x)                                             \
-        ([]() -> auto* {                                                 \
-            constexpr uint32_t _s  = _QTD_CT_SEED;                      \
-            constexpr uint8_t  _k1 = (uint8_t)(1u   + (_s         % 126u)); \
-            constexpr uint8_t  _k2 = (uint8_t)(128u + ((_s >> 8u) % 126u)); \
-            constexpr uint32_t _sl = _QTD_FILE_HASH ^ (_s >> 4u);       \
-            using _T   = qtdenc::clean_t<decltype(qtdenc::gettype(x))>; \
-            constexpr size_t _N   = qtdenc::getsize(x);                  \
-            using _OBF = qtdenc::obfuscator<_T, _N, _k1, _k2, _sl>;     \
-            constexpr static _OBF _enc(x);                               \
-            static _OBF _dec = _enc;                                     \
-            return _dec.decrypt();                                       \
-        }())
-
-#   define _QTDENC_THREADLOCAL(x)                                        \
-        ([]() -> auto* {                                                 \
-            constexpr uint32_t _s  = _QTD_CT_SEED;                      \
-            constexpr uint8_t  _k1 = (uint8_t)(1u   + (_s         % 126u)); \
-            constexpr uint8_t  _k2 = (uint8_t)(128u + ((_s >> 8u) % 126u)); \
-            constexpr uint32_t _sl = _QTD_FILE_HASH ^ (_s >> 4u);       \
-            using _T   = qtdenc::clean_t<decltype(qtdenc::gettype(x))>; \
-            constexpr size_t _N   = qtdenc::getsize(x);                  \
-            using _OBF = qtdenc::obfuscator<_T, _N, _k1, _k2, _sl>;     \
-            using _TLD = qtdenc::tl_decryptor<_T, _N, _k1, _k2, _sl>;   \
-            constexpr static _OBF _enc(x);                               \
-            thread_local _TLD _dec(_enc);                                \
-            return _dec.decrypt();                                       \
-        }())
-
-#   if QTD_CONST_ENCRYPT_THREADLOCAL
-#       define QTDENC(x) _QTDENC_THREADLOCAL(x)
-#   else
-#       define QTDENC(x) _QTDENC_NORMAL(x)
-#   endif
-
-#else
-#   define QTDENC(x) (x)
-#endif
-
-#define QTDENC_INT(x)                                               \
-    ([&]() -> decltype(x) {                                         \
-        constexpr auto _m = (decltype(x))_QTD_RND(1, 0x7E);        \
-        constexpr auto _a = (decltype(x))((x) ^ _m);               \
-        return (decltype(x))MBA_XOR(_a, _m);                        \
-    }())
-
-#if defined(__GNUC__) || defined(__clang__)
-    // GCC ≥ 10, Clang ≥ 9
-#   define _QTD_F2U(f)  (__builtin_bit_cast(uint32_t, (float)(f)))
-#   define _QTD_D2U(d)  (__builtin_bit_cast(uint64_t, (double)(d)))
-#   define _QTD_U2F(u)  (__builtin_bit_cast(float,    (uint32_t)(u)))
-#   define _QTD_U2D(u)  (__builtin_bit_cast(double,   (uint64_t)(u)))
-
-#elif defined(__cpp_lib_bit_cast)
-    // C++20 với std::bit_cast (MSVC 2019 16.6+/std:c++20)
-#   include <bit>
-#   define _QTD_F2U(f)  (::std::bit_cast<uint32_t>((float)(f)))
-#   define _QTD_D2U(d)  (::std::bit_cast<uint64_t>((double)(d)))
-#   define _QTD_U2F(u)  (::std::bit_cast<float>((uint32_t)(u)))
-#   define _QTD_U2D(u)  (::std::bit_cast<double>((uint64_t)(u)))
-
-#else
-    namespace _qtd_bp {
-        union _f32 {
-            float    f; uint32_t u;
-            constexpr explicit _f32(float    x) : f(x) {}
-            constexpr explicit _f32(uint32_t x) : u(x) {}
-        };
-        union _f64 {
-            double   d; uint64_t u;
-            constexpr explicit _f64(double   x) : d(x) {}
-            constexpr explicit _f64(uint64_t x) : u(x) {}
-        };
+    template<qtd_size key>
+    static QTD_FORCEINLINE constexpr qtd_uint8 xor_encrypt(qtd_uint8 byte, qtd_size index) {
+        return static_cast<qtd_uint8>(byte ^ ((key * 7) + index));
     }
-#   define _QTD_F2U(f)  (_qtd_bp::_f32((float)(f)).u)
-#   define _QTD_D2U(d)  (_qtd_bp::_f64((double)(d)).u)
-#   define _QTD_U2F(u)  (_qtd_bp::_f32((uint32_t)(u)).f)
-#   define _QTD_U2D(u)  (_qtd_bp::_f64((uint64_t)(u)).d)
-#endif
 
-#define QTDENC_FLOAT(x)                                             \
-    ([&]() -> float {                                               \
-        constexpr uint32_t _fb = _QTD_F2U((float)(x));             \
-        constexpr uint32_t _fm = (uint32_t)_QTD_RND(1, 0x7E);     \
-        constexpr uint32_t _fe = _fb ^ _fm;                        \
-        volatile  uint32_t _fd = (uint32_t)MBA_XOR(_fe, _fm);     \
-        return _QTD_U2F((uint32_t)_fd);                            \
-    }())
-
-#define QTDENC_DOUBLE(x)                                            \
-    ([&]() -> double {                                              \
-        constexpr uint64_t _db = _QTD_D2U((double)(x));            \
-        constexpr uint64_t _dm =                                    \
-            ((uint64_t)_QTD_RND(1, 0xFE) << 32u) |                \
-             (uint64_t)_QTD_RND(1, 0xFE);                          \
-        constexpr uint64_t _de = _db ^ _dm;                        \
-        volatile  uint64_t _dd = (uint64_t)MBA_XOR(_de, _dm);     \
-        return _QTD_U2D((uint64_t)_dd);                            \
-    }())
-
-static void _qtd_dc1(){}  static void _qtd_dc2(){}
-static void _qtd_dc3(){}  static void _qtd_dc4(){}
-static void _qtd_dc5(){}  static void _qtd_dc6(){}
-static void _qtd_dc7(){}  static void _qtd_dc8(){}
-static void _qtd_dc9(){}  static void _qtd_dc10(){}
-
-#define HIDE_CALL(fn, ...)                                          \
-    ([&]() {                                                        \
-        typedef decltype(&fn) _qtd_ft;                              \
-        volatile _qtd_ft _arr[] = {                                 \
-            (_qtd_ft)_qtd_dc1,  (_qtd_ft)_qtd_dc2,                 \
-            &fn,                 /* index 2 — thật */               \
-            (_qtd_ft)_qtd_dc3,  (_qtd_ft)_qtd_dc4,                 \
-            (_qtd_ft)_qtd_dc5,  (_qtd_ft)_qtd_dc6,                 \
-            (_qtd_ft)_qtd_dc7,  (_qtd_ft)_qtd_dc8,                 \
-            (_qtd_ft)_qtd_dc9,  (_qtd_ft)_qtd_dc10                 \
-        };                                                          \
-        return _arr[QTDENC_INT(2)](__VA_ARGS__);                    \
-    }())
-
-#if defined(_QTD_LINUX) || defined(_QTD_APPLE)
-#   include <dlfcn.h>
-#   define CALL_EXPORT(sym, ftype, ...) \
-        (reinterpret_cast<ftype>(dlsym(RTLD_DEFAULT, QTDENC(sym))))(__VA_ARGS__)
-#elif defined(_QTD_WINDOWS) && !QTD_KERNEL_MODE
-#   ifndef _WINDOWS_
-#       include <windows.h>
-#   endif
-#   define CALL_EXPORT(lib, sym, ftype, ...) \
-        (reinterpret_cast<ftype>(                                    \
-            GetProcAddress(GetModuleHandleA(QTDENC(lib)), QTDENC(sym)) \
-        ))(__VA_ARGS__)
-#endif
-
-#if QTD_CFLOW_BRANCHING
-#   define if(x)     if (_QTD_TRUE) if (_qtd_int_proxy((long long)(x)) && _QTD_TRUE)
-#   define for(x)    for (volatile int _qtd_cfi=0; _qtd_cfi<_qtd_int_proxy(1); _qtd_cfi++) for(x)
-#   define while(x)  while(_qtd_int_proxy((long long)(x)) && _QTD_TRUE)
-#   define switch(x) switch((int)(_qtd_int_proxy((long long)(x))))
-#   define return    for (volatile int _qtd_cfr=0; _qtd_cfr<_qtd_int_proxy(1); _qtd_cfr++) return
-#   define else      else _QTD_BLOCK_FALSE(_qtd_int_proxy(0);) else
-#endif
-
-#if QTD_INLINE_STD
-
-    static QTD_INLINE void qtd_strcpy(char* d, const char* s) {
-        while ((*d++ = *s++));
+    template<qtd_size key>
+    static QTD_FORCEINLINE constexpr qtd_uint8 rot_encrypt(qtd_uint8 byte, qtd_size rot_amount) {
+        qtd_uint8 amount = static_cast<qtd_uint8>(rot_amount % 8);
+        return (byte << amount) | (byte >> (8 - amount));
     }
-    static QTD_INLINE size_t qtd_strlen(const char* s) {
-        const char* p = s; while (*p) p++; return (size_t)(p - s);
+
+    template<qtd_size key>
+    static QTD_FORCEINLINE constexpr qtd_uint8 add_encrypt(qtd_uint8 byte, qtd_size index) {
+        return static_cast<qtd_uint8>(byte + ((key * 11 + index) & 0xFF));
     }
-    static QTD_INLINE int qtd_strcmp(const char* a, const char* b) {
-        while (*a == *b++) if (*a++ == '\0') return 0;
-        return *(const unsigned char*)a - *(const unsigned char*)--b;
+
+    template<qtd_size key>
+    static QTD_FORCEINLINE constexpr qtd_uint8 encrypt_byte_3layer(
+        qtd_uint8 byte, 
+        qtd_size index
+    ) {
+        qtd_uint8 layer1 = xor_encrypt<key>(byte, index);
+        qtd_uint8 layer2 = rot_encrypt<key>(layer1, key % 8);
+        qtd_uint8 layer3 = add_encrypt<key>(layer2, index);
+        return layer3;
     }
-    static QTD_INLINE int qtd_strncmp(const char* a, const char* b, size_t n) {
-        unsigned char u1, u2;
-        while (n-- > 0) {
-            u1 = (unsigned char)*a++;
-            u2 = (unsigned char)*b++;
-            if (u1 != u2) return (int)u1 - (int)u2;
-            if (u1 == '\0') return 0;
+
+    template<qtd_size key>
+    static QTD_FORCEINLINE constexpr qtd_uint8 decrypt_byte_3layer(
+        qtd_uint8 encrypted, 
+        qtd_size index
+    ) {
+        qtd_uint8 delayer3 = static_cast<qtd_uint8>(encrypted - ((key * 11 + index) & 0xFF));
+        qtd_uint8 delayer2 = (delayer3 >> (key % 8)) | (delayer3 << (8 - (key % 8)));
+        qtd_uint8 delayer1 = static_cast<qtd_uint8>(delayer2 ^ ((key * 7) + index));
+        return delayer1;
+    }
+
+    template<qtd_size... Ints>
+    struct index_sequence {
+        using type = index_sequence;
+        using value_type = qtd_size;
+        static constexpr qtd_size size() noexcept { return sizeof...(Ints); }
+    };
+
+    template<class Seq1, class Seq2>
+    struct merge_and_renumber;
+
+    template<qtd_size... I1, qtd_size... I2>
+    struct merge_and_renumber<index_sequence<I1...>, index_sequence<I2...>>
+        : index_sequence<I1..., (sizeof...(I1) + I2)...>
+    { };
+
+    template<qtd_size N>
+    struct make_index_sequence
+        : merge_and_renumber<typename make_index_sequence<N / 2>::type,
+                            typename make_index_sequence<N - N / 2>::type>
+    { };
+
+    template<> struct make_index_sequence<0> : index_sequence<> { };
+    template<> struct make_index_sequence<1> : index_sequence<0> { };
+
+    template<typename T, qtd_size array_size, qtd_size counter>
+    class EncryptedConstant {
+    private:
+        static constexpr qtd_size encryption_key = 
+            XorShift64<(counter ^ COMPILE_BASE_KEY), (counter % 32)>::value;
+        
+        static constexpr qtd_size buffer_size = 
+            ((array_size * sizeof(T) + 15) & ~15) + 
+            ((encryption_key % 16) + 1);
+        
+        alignas(16) qtd_uint8 encrypted_data[buffer_size];
+
+    public:
+        template<qtd_size... indices>
+        QTD_FORCEINLINE constexpr EncryptedConstant(
+            const T(&source)[array_size],
+            index_sequence<indices...>
+        ) : encrypted_data{
+            encrypt_byte_3layer<encryption_key>(
+                (reinterpret_cast<const qtd_uint8*>(&source))[indices], 
+                indices
+            )...
+        } { }
+
+        QTD_FORCEINLINE const T* decrypt() {
+            qtd_uint8* buffer = encrypted_data;
+            qtd_size buffer_idx = 0;
+            qtd_size data_size = array_size * sizeof(T);
+
+            for (qtd_size i = 0; i < data_size; ++i) {
+                buffer[i] = decrypt_byte_3layer<encryption_key>(buffer[i], i);
+            }
+
+            return reinterpret_cast<const T*>(buffer);
         }
-        return 0;
-    }
-    static QTD_INLINE char* qtd_strstr(const char* s, const char* f) {
-        if (!*f) return (char*)s;
-        for (; *s; ++s) {
-            const char *p = s, *q = f;
-            while (*p && *q && *p == *q) { ++p; ++q; }
-            if (!*q) return (char*)s;
-        }
-        return nullptr;
-    }
-    static QTD_INLINE char* qtd_strncat(char* dest, const char* src, size_t n) {
-        char* p = dest;
-        while (*p) p++;
-        while (n-- > 0 && *src) *p++ = *src++;
-        *p = '\0';
-        return dest;
-    }
-    static QTD_INLINE unsigned long qtd_strtoul_hex(const char* s, char** end) {
-        unsigned long r = 0;
-        while (*s) {
-            char c = *s++;
-            if      (c >= '0' && c <= '9') r = r*16 + (unsigned long)(c-'0');
-            else if (c >= 'a' && c <= 'f') r = r*16 + (unsigned long)(c-'a'+10);
-            else if (c >= 'A' && c <= 'F') r = r*16 + (unsigned long)(c-'A'+10);
-            else break;
-        }
-        if (end) *end = (char*)s;
-        return r;
-    }
-    static QTD_INLINE void* qtd_memcpy(void* dst, const void* src, size_t n) {
-        uint8_t* d = (uint8_t*)dst;
-        const uint8_t* s_ = (const uint8_t*)src;
-        while (n--) *d++ = *s_++;
-        return dst;
-    }
-    static QTD_INLINE void* qtd_memset(void* dst, int val, size_t n) {
-        uint8_t* d = (uint8_t*)dst;
-        while (n--) *d++ = (uint8_t)val;
-        return dst;
-    }
+    };
 
-    static QTD_INLINE size_t qtd_wcslen(const wchar_t* s) {
-        const wchar_t* p = s; while (*p) p++; return (size_t)(p - s);
-    }
+    template<typename T, qtd_size size>
+    static QTD_FORCEINLINE constexpr qtd_size _array_size(const T(&)[size]) { return size; }
 
-#endif // QTD_INLINE_STD
+    template<typename T>
+    static QTD_FORCEINLINE constexpr qtd_size _array_size(T) { return 0; }
 
-static void _qtd_wm_hook(const char*) {}
-typedef volatile void(*_qtd_wm_t)(const char*);
-static volatile _qtd_wm_t _qtd_wm = (_qtd_wm_t)_qtd_wm_hook;
+    template<typename T, qtd_size size>
+    static inline T _get_type(const T(&)[size]);
 
-#define QTD_WATERMARK(...)                                           \
-    do {                                                             \
-        const char* _d[] = {__VA_ARGS__};                            \
-        for (volatile int _i = 0;                                    \
-             _i < (int)(sizeof(_d)/sizeof(*_d)); _i++)               \
-            _qtd_wm(_d[_i]);                                         \
-    } while(0)
-
-static QTD_NOINLINE void _qtd_decoy_main() {
-    QTD_WATERMARK(
-        "Protected by QUOCTOANDEV",
-        "Developer by @quoctoansieudz", nullptr
-    );
+    template<typename T>
+    static inline T _get_type(T);
 }
+
+namespace qtd_runtime {
+    class StringProtection {
+    public:
+        static QTD_FORCEINLINE qtd_uint8* encrypt_string(
+            const char* plaintext, 
+            qtd_size length,
+            qtd_uint32 key
+        ) {
+            qtd_uint8* encrypted = (qtd_uint8*)malloc(length);
+            if (!encrypted) return nullptr;
+            
+            for (qtd_size i = 0; i < length; ++i) {
+                
+                qtd_uint8 byte = static_cast<qtd_uint8>(plaintext[i]);
+                byte = static_cast<qtd_uint8>(byte ^ ((key >> ((i % 4) * 8)) & 0xFF));
+                
+                qtd_uint8 rot_amount = static_cast<qtd_uint8>((key + i) % 8);
+                byte = (byte << rot_amount) | (byte >> (8 - rot_amount));
+                
+                byte = static_cast<qtd_uint8>(byte + ((key * 3 + i) & 0xFF));
+                
+                encrypted[i] = byte;
+            }
+            
+            return encrypted;
+        }
+
+        static QTD_FORCEINLINE char* decrypt_string(
+            qtd_uint8* encrypted, 
+            qtd_size length,
+            qtd_uint32 key
+        ) {
+            char* decrypted = (char*)malloc(length + 1);
+            if (!decrypted) return nullptr;
+
+            for (qtd_size i = 0; i < length; ++i) {
+                qtd_uint8 byte = encrypted[i];
+                
+                byte = static_cast<qtd_uint8>(byte - ((key * 3 + i) & 0xFF));
+                
+                qtd_uint8 rot_amount = static_cast<qtd_uint8>((key + i) % 8);
+                byte = (byte >> rot_amount) | (byte << (8 - rot_amount));
+                
+                byte = static_cast<qtd_uint8>(byte ^ ((key >> ((i % 4) * 8)) & 0xFF));
+                
+                decrypted[i] = static_cast<char>(byte);
+            }
+
+            decrypted[length] = '\0';
+            return decrypted;
+        }
+
+        static QTD_FORCEINLINE void secure_free(void* ptr) {
+            if (ptr) {
+                memset(ptr, 0, 256);
+                free(ptr);
+            }
+        }
+    };
+
+    class MBAObfuscation {
+    public:
+        static QTD_FORCEINLINE qtd_uint32 add_obfuscated(qtd_uint32 a, qtd_uint32 b) {
+            return ((a ^ b) + ((a & b) << 1));
+        }
+
+        static QTD_FORCEINLINE qtd_uint32 sub_obfuscated(qtd_uint32 a, qtd_uint32 b) {
+            return ((a ^ b) - ((~a & b) << 1));
+        }
+
+        static QTD_FORCEINLINE qtd_uint32 mul_obfuscated(qtd_uint32 a, qtd_uint32 b) {
+            return ((a << 1) + a) + (b - (b >> 2));
+        }
+
+        static QTD_FORCEINLINE qtd_uint32 xor_obfuscated(qtd_uint32 a, qtd_uint32 b) {
+            return ((a | b) - (a & b));
+        }
+
+        static QTD_FORCEINLINE qtd_uint32 and_obfuscated(qtd_uint32 a, qtd_uint32 b) {
+            return ((a & b) ^ ((a ^ b) & a));
+        }
+
+        static QTD_FORCEINLINE qtd_uint32 or_obfuscated(qtd_uint32 a, qtd_uint32 b) {
+            return ((a | b) ^ ((a ^ b) & b));
+        }
+    };
+
+    typedef void (*qtd_func_ptr)(void);
+
+    class FunctionPointerProtection {
+    private:
+        qtd_func_ptr* function_table;
+        qtd_size table_size;
+        qtd_uint32 table_key;
+
+    public:
+        FunctionPointerProtection(qtd_func_ptr funcs[], qtd_size size, qtd_uint32 key)
+            : function_table(funcs),
+              table_size(size),
+              table_key(key) { }
+
+        QTD_FORCEINLINE void call_function_indirect(qtd_size index) {
+            qtd_uint32 fake_idx = static_cast<qtd_uint32>(index ^ table_key);
+            qtd_uint32 real_idx = static_cast<qtd_uint32>(fake_idx ^ table_key);
+
+            if (real_idx < table_size) {
+                function_table[real_idx]();
+            }
+        }
+    };
+
+    class IntegrityChecker {
+    public:
+        static QTD_FORCEINLINE qtd_uint32 calculate_checksum(
+            const qtd_uint8* data, 
+            qtd_size length
+        ) {
+            qtd_uint32 checksum = 0xDEADBEEF;
+            for (qtd_size i = 0; i < length; ++i) {
+                checksum = ((checksum << 5) + checksum) ^ data[i];
+            }
+            return checksum;
+        }
+
+        static QTD_FORCEINLINE bool verify_integrity(
+            const qtd_uint8* data, 
+            qtd_size length,
+            qtd_uint32 expected_checksum
+        ) {
+            return calculate_checksum(data, length) == expected_checksum;
+        }
+    };
+}
+
+#define QTD_ENCRYPT_STRING(str) \
+    ([]() { \
+        static constexpr const char encrypted_str[] = str; \
+        return qtd_crypto::EncryptedConstant< \
+            char, \
+            sizeof(encrypted_str) / sizeof(char), \
+            __COUNTER__ \
+        >(encrypted_str, qtd_crypto::make_index_sequence<sizeof(encrypted_str)>()).decrypt(); \
+    }())
+
+#define QTD_ENCRYPT_ARRAY(data) \
+    qtd_crypto::EncryptedConstant< \
+        decltype(data[0]), \
+        sizeof(data) / sizeof(data[0]), \
+        __COUNTER__ \
+    >(data, qtd_crypto::make_index_sequence<sizeof(data)>()).decrypt()
+
+#define QTD_ADD(a, b) qtd_runtime::MBAObfuscation::add_obfuscated(a, b)
+#define QTD_SUB(a, b) qtd_runtime::MBAObfuscation::sub_obfuscated(a, b)
+#define QTD_MUL(a, b) qtd_runtime::MBAObfuscation::mul_obfuscated(a, b)
+#define QTD_XOR(a, b) qtd_runtime::MBAObfuscation::xor_obfuscated(a, b)
+#define QTD_AND(a, b) qtd_runtime::MBAObfuscation::and_obfuscated(a, b)
+#define QTD_OR(a, b)  qtd_runtime::MBAObfuscation::or_obfuscated(a, b)
+
+#define QTD_ENCRYPT_STR_RUNTIME(str, key) \
+    qtd_runtime::StringProtection::encrypt_string(str, strlen(str), key)
+
+#define QTD_DECRYPT_STR_RUNTIME(encrypted, length, key) \
+    qtd_runtime::StringProtection::decrypt_string(encrypted, length, key)
+
+#define QTD_SECURE_FREE(ptr) qtd_runtime::StringProtection::secure_free(ptr)
+
+#define QTD_CALC_CHECKSUM(data, length) \
+    qtd_runtime::IntegrityChecker::calculate_checksum(data, length)
+
+#define QTD_VERIFY_INTEGRITY(data, length, expected) \
+    qtd_runtime::IntegrityChecker::verify_integrity(data, length, expected)
 
 #endif // QUOCTOANDEV_H
-
-#undef if
-#undef for
-#undef while
-#undef switch
-#undef return
-#undef else
